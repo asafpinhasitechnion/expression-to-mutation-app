@@ -1,0 +1,900 @@
+{
+    "generated_at_utc":  "2026-06-06T18:11:09.5033948Z",
+    "project_root":  ".",
+    "sources":  {
+                    "results_dir":  "Results/TCGA_results/Lean_multitask_nn",
+                    "mc3_dir":  "tcga_xena_mutations_data",
+                    "gtf":  "gencode.v23lift37.annotation.gtf.gz",
+                    "fasta":  "gencode.v23lift37.transcripts.fa.gz",
+                    "shap_summary_results":  "Results/TCGA_results/Lean_multitask_nn",
+                    "shap_beeswarms":  "Clean_TCGA_E2M_prediction/output/multitask_nn"
+                },
+    "analysis_scope":  {
+                           "variant_cohorts":  [
+                                                   "ACC",
+                                                   "BLCA",
+                                                   "BRCA",
+                                                   "CESC",
+                                                   "CHOL",
+                                                   "COAD",
+                                                   "DLBC",
+                                                   "ESCA",
+                                                   "GBM",
+                                                   "HNSC",
+                                                   "KICH",
+                                                   "KIRC",
+                                                   "KIRP",
+                                                   "LGG",
+                                                   "LIHC",
+                                                   "LUAD",
+                                                   "LUSC",
+                                                   "MESO",
+                                                   "OV",
+                                                   "PAAD",
+                                                   "PCPG",
+                                                   "PRAD",
+                                                   "READ",
+                                                   "SARC",
+                                                   "SKCM",
+                                                   "STAD",
+                                                   "TGCT",
+                                                   "THCA",
+                                                   "THYM",
+                                                   "UCEC",
+                                                   "UCS"
+                                               ],
+                           "excluded_by_default":  [
+                                                       "all",
+                                                       "UVM"
+                                                   ],
+                           "reason":  "Matches the maintained Figure 3 mutation-effect analysis scope."
+                       },
+    "variants":  {
+                     "normalized_auprc_threshold":  0.1,
+                     "cohorts":  [
+                                     {
+                                         "cohort":  "ACC",
+                                         "selected_genes":  33,
+                                         "silent_rows":  17,
+                                         "missense_rows":  135
+                                     },
+                                     {
+                                         "cohort":  "BLCA",
+                                         "selected_genes":  46,
+                                         "silent_rows":  255,
+                                         "missense_rows":  1308
+                                     },
+                                     {
+                                         "cohort":  "BRCA",
+                                         "selected_genes":  7,
+                                         "silent_rows":  36,
+                                         "missense_rows":  690
+                                     },
+                                     {
+                                         "cohort":  "CESC",
+                                         "selected_genes":  71,
+                                         "silent_rows":  280,
+                                         "missense_rows":  1629
+                                     },
+                                     {
+                                         "cohort":  "CHOL",
+                                         "selected_genes":  126,
+                                         "silent_rows":  4,
+                                         "missense_rows":  232
+                                     },
+                                     {
+                                         "cohort":  "COAD",
+                                         "selected_genes":  394,
+                                         "silent_rows":  2963,
+                                         "missense_rows":  12785
+                                     },
+                                     {
+                                         "cohort":  "DLBC",
+                                         "selected_genes":  392,
+                                         "silent_rows":  128,
+                                         "missense_rows":  981
+                                     },
+                                     {
+                                         "cohort":  "ESCA",
+                                         "selected_genes":  76,
+                                         "silent_rows":  223,
+                                         "missense_rows":  1044
+                                     },
+                                     {
+                                         "cohort":  "GBM",
+                                         "selected_genes":  18,
+                                         "silent_rows":  27,
+                                         "missense_rows":  244
+                                     },
+                                     {
+                                         "cohort":  "HNSC",
+                                         "selected_genes":  32,
+                                         "silent_rows":  261,
+                                         "missense_rows":  1706
+                                     },
+                                     {
+                                         "cohort":  "KICH",
+                                         "selected_genes":  5,
+                                         "silent_rows":  0,
+                                         "missense_rows":  28
+                                     },
+                                     {
+                                         "cohort":  "KIRC",
+                                         "selected_genes":  6,
+                                         "silent_rows":  5,
+                                         "missense_rows":  139
+                                     },
+                                     {
+                                         "cohort":  "KIRP",
+                                         "selected_genes":  4,
+                                         "silent_rows":  10,
+                                         "missense_rows":  77
+                                     },
+                                     {
+                                         "cohort":  "LGG",
+                                         "selected_genes":  10,
+                                         "silent_rows":  28,
+                                         "missense_rows":  857
+                                     },
+                                     {
+                                         "cohort":  "LIHC",
+                                         "selected_genes":  11,
+                                         "silent_rows":  52,
+                                         "missense_rows":  308
+                                     },
+                                     {
+                                         "cohort":  "LUAD",
+                                         "selected_genes":  299,
+                                         "silent_rows":  3647,
+                                         "missense_rows":  16936
+                                     },
+                                     {
+                                         "cohort":  "LUSC",
+                                         "selected_genes":  28,
+                                         "silent_rows":  280,
+                                         "missense_rows":  1401
+                                     },
+                                     {
+                                         "cohort":  "MESO",
+                                         "selected_genes":  5,
+                                         "silent_rows":  4,
+                                         "missense_rows":  25
+                                     },
+                                     {
+                                         "cohort":  "OV",
+                                         "selected_genes":  20,
+                                         "silent_rows":  2,
+                                         "missense_rows":  43
+                                     },
+                                     {
+                                         "cohort":  "PAAD",
+                                         "selected_genes":  7,
+                                         "silent_rows":  4,
+                                         "missense_rows":  234
+                                     },
+                                     {
+                                         "cohort":  "PCPG",
+                                         "selected_genes":  2,
+                                         "silent_rows":  0,
+                                         "missense_rows":  20
+                                     },
+                                     {
+                                         "cohort":  "PRAD",
+                                         "selected_genes":  4,
+                                         "silent_rows":  11,
+                                         "missense_rows":  156
+                                     },
+                                     {
+                                         "cohort":  "READ",
+                                         "selected_genes":  267,
+                                         "silent_rows":  252,
+                                         "missense_rows":  1764
+                                     },
+                                     {
+                                         "cohort":  "SARC",
+                                         "selected_genes":  6,
+                                         "silent_rows":  8,
+                                         "missense_rows":  116
+                                     },
+                                     {
+                                         "cohort":  "SKCM",
+                                         "selected_genes":  380,
+                                         "silent_rows":  9285,
+                                         "missense_rows":  39229
+                                     },
+                                     {
+                                         "cohort":  "STAD",
+                                         "selected_genes":  380,
+                                         "silent_rows":  3407,
+                                         "missense_rows":  13305
+                                     },
+                                     {
+                                         "cohort":  "TGCT",
+                                         "selected_genes":  3,
+                                         "silent_rows":  0,
+                                         "missense_rows":  34
+                                     },
+                                     {
+                                         "cohort":  "THCA",
+                                         "selected_genes":  2,
+                                         "silent_rows":  0,
+                                         "missense_rows":  326
+                                     },
+                                     {
+                                         "cohort":  "THYM",
+                                         "selected_genes":  2,
+                                         "silent_rows":  0,
+                                         "missense_rows":  66
+                                     },
+                                     {
+                                         "cohort":  "UCEC",
+                                         "selected_genes":  400,
+                                         "silent_rows":  3960,
+                                         "missense_rows":  34937
+                                     },
+                                     {
+                                         "cohort":  "UCS",
+                                         "selected_genes":  171,
+                                         "silent_rows":  45,
+                                         "missense_rows":  614
+                                     }
+                                 ],
+                     "files":  [
+                                   {
+                                       "path":  "data/silent_mutations.parquet",
+                                       "bytes":  927530,
+                                       "sha256":  "54ead8c0a0013b0b32ba8add88853c7f4f8eb39bf5e705f26b1e36a9dd0fc4df",
+                                       "rows":  25194,
+                                       "columns":  [
+                                                       "Tumor_Sample_Barcode",
+                                                       "Chromosome",
+                                                       "Start_Position",
+                                                       "End_Position",
+                                                       "Reference_Allele",
+                                                       "Tumor_Seq_Allele2",
+                                                       "Hugo_Symbol",
+                                                       "Variant_Classification",
+                                                       "Amino_Acid_Change",
+                                                       "DNA_VAF",
+                                                       "SIFT",
+                                                       "PolyPhen",
+                                                       "sample4",
+                                                       "mutation_effect_rank",
+                                                       "mutation_effect_class",
+                                                       "source_file",
+                                                       "Cancer",
+                                                       "pred_prob"
+                                                   ]
+                                   },
+                                   {
+                                       "path":  "data/missense_mutations.parquet",
+                                       "bytes":  4574887,
+                                       "sha256":  "953f761818723f9fbf23ff75c871a194e1560b169b4f9216d0dac5f25e078fc0",
+                                       "rows":  131369,
+                                       "columns":  [
+                                                       "Tumor_Sample_Barcode",
+                                                       "Chromosome",
+                                                       "Start_Position",
+                                                       "End_Position",
+                                                       "Reference_Allele",
+                                                       "Tumor_Seq_Allele2",
+                                                       "Hugo_Symbol",
+                                                       "Variant_Classification",
+                                                       "Amino_Acid_Change",
+                                                       "DNA_VAF",
+                                                       "SIFT",
+                                                       "PolyPhen",
+                                                       "sample4",
+                                                       "mutation_effect_rank",
+                                                       "mutation_effect_class",
+                                                       "source_file",
+                                                       "Cancer",
+                                                       "pred_prob"
+                                                   ]
+                                   }
+                               ]
+                 },
+    "reference":  {
+                      "genes":  1336,
+                      "transcripts_in_gtf":  12218,
+                      "transcript_sequences":  12218,
+                      "files":  [
+                                    {
+                                        "path":  "gtf_filtered.parquet",
+                                        "bytes":  1388564,
+                                        "sha256":  "f4d34127c696005008df660930896dcd3b155d46252dfe178c492d7ac0e53d85",
+                                        "rows":  273309,
+                                        "columns":  [
+                                                        "feature",
+                                                        "chrom",
+                                                        "start",
+                                                        "end",
+                                                        "strand",
+                                                        "gene_name",
+                                                        "gene_id",
+                                                        "transcript_id",
+                                                        "transcript_name"
+                                                    ]
+                                    },
+                                    {
+                                        "path":  "sequences_filtered.parquet",
+                                        "bytes":  12105880,
+                                        "sha256":  "278e2c9cc33c54c423a2d364f4d54bd1b9b027f6841abcec81c3a93d0c90d549",
+                                        "rows":  12218,
+                                        "columns":  [
+                                                        "transcript_id",
+                                                        "sequence"
+                                                    ]
+                                    }
+                                ]
+                  },
+    "validation":  {
+                       "variant_files":  {
+                                             "silent_mutations.parquet":  {
+                                                                              "rows":  25194,
+                                                                              "probabilities_checked":  23426
+                                                                          },
+                                             "missense_mutations.parquet":  {
+                                                                                "rows":  131369,
+                                                                                "probabilities_checked":  94303
+                                                                            }
+                                         },
+                       "shap_cohorts":  {
+                                            "ACC":  {
+                                                        "metric_targets":  45,
+                                                        "shap_targets":  42,
+                                                        "shap_rows":  1447,
+                                                        "beeswarm_targets":  42
+                                                    },
+                                            "BLCA":  {
+                                                         "metric_targets":  303,
+                                                         "shap_targets":  176,
+                                                         "shap_rows":  62518,
+                                                         "beeswarm_targets":  176
+                                                     },
+                                            "BRCA":  {
+                                                         "metric_targets":  16,
+                                                         "shap_targets":  10,
+                                                         "shap_rows":  8881,
+                                                         "beeswarm_targets":  10
+                                                     },
+                                            "CESC":  {
+                                                         "metric_targets":  131,
+                                                         "shap_targets":  109,
+                                                         "shap_rows":  23014,
+                                                         "beeswarm_targets":  109
+                                                     },
+                                            "CHOL":  {
+                                                         "metric_targets":  127,
+                                                         "shap_targets":  127,
+                                                         "shap_rows":  288,
+                                                         "beeswarm_targets":  127
+                                                     },
+                                            "COAD":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  400,
+                                                         "shap_rows":  120824,
+                                                         "beeswarm_targets":  400
+                                                     },
+                                            "DLBC":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  400,
+                                                         "shap_rows":  2433,
+                                                         "beeswarm_targets":  400
+                                                     },
+                                            "ESCA":  {
+                                                         "metric_targets":  134,
+                                                         "shap_targets":  112,
+                                                         "shap_rows":  13543,
+                                                         "beeswarm_targets":  112
+                                                     },
+                                            "GBM":  {
+                                                        "metric_targets":  32,
+                                                        "shap_targets":  25,
+                                                        "shap_rows":  2599,
+                                                        "beeswarm_targets":  25
+                                                    },
+                                            "HNSC":  {
+                                                         "metric_targets":  119,
+                                                         "shap_targets":  81,
+                                                         "shap_rows":  38852,
+                                                         "beeswarm_targets":  81
+                                                     },
+                                            "KICH":  {
+                                                         "metric_targets":  5,
+                                                         "shap_targets":  5,
+                                                         "shap_rows":  255,
+                                                         "beeswarm_targets":  5
+                                                     },
+                                            "KIRC":  {
+                                                         "metric_targets":  8,
+                                                         "shap_targets":  6,
+                                                         "shap_rows":  2435,
+                                                         "beeswarm_targets":  6
+                                                     },
+                                            "KIRP":  {
+                                                         "metric_targets":  8,
+                                                         "shap_targets":  5,
+                                                         "shap_rows":  1070,
+                                                         "beeswarm_targets":  5
+                                                     },
+                                            "LGG":  {
+                                                        "metric_targets":  11,
+                                                        "shap_targets":  11,
+                                                        "shap_rows":  4291,
+                                                        "beeswarm_targets":  11
+                                                    },
+                                            "LIHC":  {
+                                                         "metric_targets":  47,
+                                                         "shap_targets":  28,
+                                                         "shap_rows":  8249,
+                                                         "beeswarm_targets":  28
+                                                     },
+                                            "LUAD":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  388,
+                                                         "shap_rows":  226569,
+                                                         "beeswarm_targets":  388
+                                                     },
+                                            "LUSC":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  186,
+                                                         "shap_rows":  100735,
+                                                         "beeswarm_targets":  186
+                                                     },
+                                            "MESO":  {
+                                                         "metric_targets":  6,
+                                                         "shap_targets":  5,
+                                                         "shap_rows":  311,
+                                                         "beeswarm_targets":  5
+                                                     },
+                                            "OV":  {
+                                                       "metric_targets":  24,
+                                                       "shap_targets":  20,
+                                                       "shap_rows":  39,
+                                                       "beeswarm_targets":  20
+                                                   },
+                                            "PAAD":  {
+                                                         "metric_targets":  12,
+                                                         "shap_targets":  10,
+                                                         "shap_rows":  1528,
+                                                         "beeswarm_targets":  10
+                                                     },
+                                            "PCPG":  {
+                                                         "metric_targets":  2,
+                                                         "shap_targets":  2,
+                                                         "shap_rows":  209,
+                                                         "beeswarm_targets":  2
+                                                     },
+                                            "PRAD":  {
+                                                         "metric_targets":  7,
+                                                         "shap_targets":  5,
+                                                         "shap_rows":  1773,
+                                                         "beeswarm_targets":  5
+                                                     },
+                                            "READ":  {
+                                                         "metric_targets":  396,
+                                                         "shap_targets":  368,
+                                                         "shap_rows":  15932,
+                                                         "beeswarm_targets":  368
+                                                     },
+                                            "SARC":  {
+                                                         "metric_targets":  14,
+                                                         "shap_targets":  12,
+                                                         "shap_rows":  2451,
+                                                         "beeswarm_targets":  12
+                                                     },
+                                            "SKCM":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  399,
+                                                         "shap_rows":  309325,
+                                                         "beeswarm_targets":  399
+                                                     },
+                                            "STAD":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  395,
+                                                         "shap_rows":  151970,
+                                                         "beeswarm_targets":  395
+                                                     },
+                                            "TGCT":  {
+                                                         "metric_targets":  3,
+                                                         "shap_targets":  3,
+                                                         "shap_rows":  235,
+                                                         "beeswarm_targets":  3
+                                                     },
+                                            "THCA":  {
+                                                         "metric_targets":  2,
+                                                         "shap_targets":  2,
+                                                         "shap_rows":  425,
+                                                         "beeswarm_targets":  2
+                                                     },
+                                            "THYM":  {
+                                                         "metric_targets":  2,
+                                                         "shap_targets":  2,
+                                                         "shap_rows":  95,
+                                                         "beeswarm_targets":  2
+                                                     },
+                                            "UCEC":  {
+                                                         "metric_targets":  400,
+                                                         "shap_targets":  400,
+                                                         "shap_rows":  223055,
+                                                         "beeswarm_targets":  400
+                                                     },
+                                            "UCS":  {
+                                                        "metric_targets":  205,
+                                                        "shap_targets":  203,
+                                                        "shap_rows":  2808,
+                                                        "beeswarm_targets":  203
+                                                    },
+                                            "UVM":  {
+                                                        "metric_targets":  7,
+                                                        "shap_targets":  6,
+                                                        "shap_rows":  450,
+                                                        "beeswarm_targets":  6
+                                                    }
+                                        }
+                   },
+    "shap":  {
+                 "format":  "indexed_cohort_shap_bundle_v1",
+                 "index":  "shap_bundle/index.json",
+                 "beeswarm_source":  "Clean_TCGA_E2M_prediction/output/multitask_nn",
+                 "cohort_count":  32,
+                 "metric_target_count":  4466,
+                 "shap_target_count":  3943,
+                 "beeswarm_target_count":  3943,
+                 "cohorts":  {
+                                 "ACC":  {
+                                             "metric_targets":  45,
+                                             "shap_targets":  42,
+                                             "shap_rows":  1447,
+                                             "beeswarm_target_count":  42,
+                                             "archive_bytes":  1377315,
+                                             "archive_sha256":  "fc11b9d8c7553683294f56db7715348a4af470633566521a6ff9c34f0fe40f6a",
+                                             "derived_summary_targets":  [
+
+                                                                         ]
+                                         },
+                                 "BLCA":  {
+                                              "metric_targets":  303,
+                                              "shap_targets":  176,
+                                              "shap_rows":  62518,
+                                              "beeswarm_target_count":  176,
+                                              "archive_bytes":  16109710,
+                                              "archive_sha256":  "3160d24e6ed69eec4060554991f55685a9861f786a11499b167dab77dbe22087",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "BRCA":  {
+                                              "metric_targets":  16,
+                                              "shap_targets":  10,
+                                              "shap_rows":  8881,
+                                              "beeswarm_target_count":  10,
+                                              "archive_bytes":  1652320,
+                                              "archive_sha256":  "fe5926bf0ff3a68f56be026ad2b585baaf0a8ecb8eb5bd5f871bf12e61699840",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "CESC":  {
+                                              "metric_targets":  131,
+                                              "shap_targets":  109,
+                                              "shap_rows":  23014,
+                                              "beeswarm_target_count":  109,
+                                              "archive_bytes":  7427127,
+                                              "archive_sha256":  "90c7739a2548038a2eefcf775109bfdaf110b0b1afe9b0b15263b1e7d589c93a",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "CHOL":  {
+                                              "metric_targets":  127,
+                                              "shap_targets":  127,
+                                              "shap_rows":  288,
+                                              "beeswarm_target_count":  127,
+                                              "archive_bytes":  3562212,
+                                              "archive_sha256":  "44508747e1d6385da3304932bb2444b4a5132c64ed0b6db626480ca6fd11e7db",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "COAD":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  400,
+                                              "shap_rows":  120824,
+                                              "beeswarm_target_count":  400,
+                                              "archive_bytes":  27969838,
+                                              "archive_sha256":  "13fad1567a9f47a5a295317314c86f6d9df07c3aad3c5eef45aea0d594c998ad",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "DLBC":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  400,
+                                              "shap_rows":  2433,
+                                              "beeswarm_target_count":  400,
+                                              "archive_bytes":  11228633,
+                                              "archive_sha256":  "32c5cae281503f104d82b6d70ad52e6e7b82884088e89be0685af1942f547c97",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "ESCA":  {
+                                              "metric_targets":  134,
+                                              "shap_targets":  112,
+                                              "shap_rows":  13543,
+                                              "beeswarm_target_count":  112,
+                                              "archive_bytes":  5542450,
+                                              "archive_sha256":  "3b7eba47994589eef4c37b3eb5a975f0a87dbb523173cab488632482413d2a08",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "GBM":  {
+                                             "metric_targets":  32,
+                                             "shap_targets":  25,
+                                             "shap_rows":  2599,
+                                             "beeswarm_target_count":  25,
+                                             "archive_bytes":  1066858,
+                                             "archive_sha256":  "153c4bb525ad14a1a30b045cefbe5257f959b8dbbefb7785e7725d9928f5517f",
+                                             "derived_summary_targets":  [
+
+                                                                         ]
+                                         },
+                                 "HNSC":  {
+                                              "metric_targets":  119,
+                                              "shap_targets":  81,
+                                              "shap_rows":  38852,
+                                              "beeswarm_target_count":  81,
+                                              "archive_bytes":  8594731,
+                                              "archive_sha256":  "0544479dc71a7f483724f3ea57e8500a207a58495fee45c721117b84ad542265",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "KICH":  {
+                                              "metric_targets":  5,
+                                              "shap_targets":  5,
+                                              "shap_rows":  255,
+                                              "beeswarm_target_count":  5,
+                                              "archive_bytes":  160515,
+                                              "archive_sha256":  "b086e60467fff5419c8c884022c31605cdd252428319729fc41cb5b4acbe905d",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "KIRC":  {
+                                              "metric_targets":  8,
+                                              "shap_targets":  6,
+                                              "shap_rows":  2435,
+                                              "beeswarm_target_count":  6,
+                                              "archive_bytes":  493074,
+                                              "archive_sha256":  "ef52206bf187f84fd245a289dff14c1f8821f4ace8be004a2069111ef514a674",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "KIRP":  {
+                                              "metric_targets":  8,
+                                              "shap_targets":  5,
+                                              "shap_rows":  1070,
+                                              "beeswarm_target_count":  5,
+                                              "archive_bytes":  336559,
+                                              "archive_sha256":  "6c7245af699951fd3a8aedb6175c330a7215cf294a319ff3c0d29ec7c87e2ed2",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "LGG":  {
+                                             "metric_targets":  11,
+                                             "shap_targets":  11,
+                                             "shap_rows":  4291,
+                                             "beeswarm_target_count":  11,
+                                             "archive_bytes":  1118766,
+                                             "archive_sha256":  "2f289dc08a2ec0147b5b4d32de43c9f72964d0abf7935bad31ef80ebfe24efb7",
+                                             "derived_summary_targets":  [
+
+                                                                         ]
+                                         },
+                                 "LIHC":  {
+                                              "metric_targets":  47,
+                                              "shap_targets":  28,
+                                              "shap_rows":  8249,
+                                              "beeswarm_target_count":  28,
+                                              "archive_bytes":  2292855,
+                                              "archive_sha256":  "84eee1883223ea4dfbdf858a3ca35c8108e310bfb31b744e96029908a6f61159",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "LUAD":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  388,
+                                              "shap_rows":  226569,
+                                              "beeswarm_target_count":  388,
+                                              "archive_bytes":  42506657,
+                                              "archive_sha256":  "72228e2d496fd3a5afb91b45e2aa545edfb2888b8eb26f65ac3e7af4cb2a7027",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "LUSC":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  186,
+                                              "shap_rows":  100735,
+                                              "beeswarm_target_count":  186,
+                                              "archive_bytes":  19578231,
+                                              "archive_sha256":  "b9daf04a9e214fa2aa0895b76303895bfc0c50e2931aeefe2dab21fa18142c49",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "MESO":  {
+                                              "metric_targets":  6,
+                                              "shap_targets":  5,
+                                              "shap_rows":  311,
+                                              "beeswarm_target_count":  5,
+                                              "archive_bytes":  172017,
+                                              "archive_sha256":  "d7cbcbac1aa81a4aa5385bf6e3fbc90e92527042749c0c492fc7e184db571442",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "OV":  {
+                                            "metric_targets":  24,
+                                            "shap_targets":  20,
+                                            "shap_rows":  39,
+                                            "beeswarm_target_count":  20,
+                                            "archive_bytes":  532492,
+                                            "archive_sha256":  "7d6060b377a7feed37c9b5d603536e1ab592fb579890dabc9dee305463639137",
+                                            "derived_summary_targets":  [
+                                                                            "TP53"
+                                                                        ]
+                                        },
+                                 "PAAD":  {
+                                              "metric_targets":  12,
+                                              "shap_targets":  10,
+                                              "shap_rows":  1528,
+                                              "beeswarm_target_count":  10,
+                                              "archive_bytes":  489166,
+                                              "archive_sha256":  "2e20a9f8e3da47c4cf4765915aa1dfb7bfd4356cbea1bd80143d728848484569",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "PCPG":  {
+                                              "metric_targets":  2,
+                                              "shap_targets":  2,
+                                              "shap_rows":  209,
+                                              "beeswarm_target_count":  2,
+                                              "archive_bytes":  99304,
+                                              "archive_sha256":  "3657c52bcfa654b919b7cc57d794ca45f13387bd52ee732669145db9136d180a",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "PRAD":  {
+                                              "metric_targets":  7,
+                                              "shap_targets":  5,
+                                              "shap_rows":  1773,
+                                              "beeswarm_target_count":  5,
+                                              "archive_bytes":  488880,
+                                              "archive_sha256":  "f12583f4371ad0bd9ebb45fcc54093758051e2a9319e8771e4a89f58b948e22a",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "READ":  {
+                                              "metric_targets":  396,
+                                              "shap_targets":  368,
+                                              "shap_rows":  15932,
+                                              "beeswarm_target_count":  368,
+                                              "archive_bytes":  12700980,
+                                              "archive_sha256":  "c3abe992b789da25b9ad75a22dec32870c5a2a8d155290ce900a259ecb42dbbb",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "SARC":  {
+                                              "metric_targets":  14,
+                                              "shap_targets":  12,
+                                              "shap_rows":  2451,
+                                              "beeswarm_target_count":  12,
+                                              "archive_bytes":  738373,
+                                              "archive_sha256":  "10631b933e3e36669ac368b87e2907931e2fc2916620944c001ab1ea9f592742",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "SKCM":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  399,
+                                              "shap_rows":  309325,
+                                              "beeswarm_target_count":  399,
+                                              "archive_bytes":  43103679,
+                                              "archive_sha256":  "5454ac6cdc084ff0aabccb3a615bb0bf9d04358fa1cf1e6d00a225f8e337e246",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "STAD":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  395,
+                                              "shap_rows":  151970,
+                                              "beeswarm_target_count":  395,
+                                              "archive_bytes":  36518128,
+                                              "archive_sha256":  "4ca645bd481d447d886042e0460e7c4d54ce809e9469e5285190daf2dc7d2a83",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "TGCT":  {
+                                              "metric_targets":  3,
+                                              "shap_targets":  3,
+                                              "shap_rows":  235,
+                                              "beeswarm_target_count":  3,
+                                              "archive_bytes":  126546,
+                                              "archive_sha256":  "4a906e6cfade4f4c653f955c146f828361954656888a9e46675f50ec8a18776b",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "THCA":  {
+                                              "metric_targets":  2,
+                                              "shap_targets":  2,
+                                              "shap_rows":  425,
+                                              "beeswarm_target_count":  2,
+                                              "archive_bytes":  182114,
+                                              "archive_sha256":  "d58b49a8bcb66ba71a57efd0cfb5c29795ca775f391fc605699a95ead0070dfe",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "THYM":  {
+                                              "metric_targets":  2,
+                                              "shap_targets":  2,
+                                              "shap_rows":  95,
+                                              "beeswarm_target_count":  2,
+                                              "archive_bytes":  75692,
+                                              "archive_sha256":  "003d8fe200520cf38afbcec9f6436294382998e13b71661466281304679421d3",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "UCEC":  {
+                                              "metric_targets":  400,
+                                              "shap_targets":  400,
+                                              "shap_rows":  223055,
+                                              "beeswarm_target_count":  400,
+                                              "archive_bytes":  39374396,
+                                              "archive_sha256":  "de0d75eb1db049b82b458374882c557cf3d4ed015f8699ea5524f61a001ccd85",
+                                              "derived_summary_targets":  [
+
+                                                                          ]
+                                          },
+                                 "UCS":  {
+                                             "metric_targets":  205,
+                                             "shap_targets":  203,
+                                             "shap_rows":  2808,
+                                             "beeswarm_target_count":  203,
+                                             "archive_bytes":  6169278,
+                                             "archive_sha256":  "fb07e2783642672b3460d29e1cccd78cf54e109cf904ac95beda77581dbd6fe4",
+                                             "derived_summary_targets":  [
+
+                                                                         ]
+                                         },
+                                 "UVM":  {
+                                             "metric_targets":  7,
+                                             "shap_targets":  6,
+                                             "shap_rows":  450,
+                                             "beeswarm_target_count":  6,
+                                             "archive_bytes":  205545,
+                                             "archive_sha256":  "aed12431a255277c617509b1865c4012a717371ca918b5c59cd04bd0c8992ad0",
+                                             "derived_summary_targets":  [
+
+                                                                         ]
+                                         }
+                             }
+             }
+}

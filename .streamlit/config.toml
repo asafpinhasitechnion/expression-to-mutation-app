@@ -1,14 +1,17 @@
 [server]
 headless = true
-enableCORS = false
+enableCORS = true
+runOnSave = true
 
 [browser]
 gatherUsageStats = false
 
+# Theme inherited from the manuscript figure palette (see styles.css design system).
+# Green is the primary accent; page is a faint warm off-white; surfaces are white.
 [theme]
 base = "light"
-primaryColor = "#885784"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0E8D1"
-textColor = "#1A1A1A"
+primaryColor = "#558771"
+backgroundColor = "#FBFAF6"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#2A2620"
 font = "sans serif"
