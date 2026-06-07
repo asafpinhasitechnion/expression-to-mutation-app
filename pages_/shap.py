@@ -115,8 +115,8 @@ def render() -> None:
     theme.page_head(
         "Feature attribution",
         "SHAP explorer",
-        "Inspect expression features associated with prediction of a selected mutation target. "
-        "Per-sample values are loaded only when available for the selected target.",
+        "See which genes' expression the model leans on when predicting a mutation. Where it is "
+        "available, you can also look at the values for every individual tumor.",
     )
     theme.caveat()
 
@@ -156,8 +156,8 @@ def render() -> None:
         st.plotly_chart(_feature_plot(features, int(top_n)), width="stretch")
         theme.fig_caption(
             "1",
-            f"Features are ranked by the magnitude of their mean {theme.def_chip('SHAP value')}. "
-            "Purple bars push predictions toward the mutated class on average; orange bars push away.",
+            f"Genes ranked by how much their expression moves the prediction on average "
+            f"({theme.def_chip('SHAP value')}). Purple pushes toward 'mutated', orange pushes away.",
         )
         theme.provenance([
             ("Cohort", cohort), ("Target", target), ("Features", str(len(features))),
@@ -167,9 +167,9 @@ def render() -> None:
     beeswarm = data.load_beeswarm(cohort, target)
     if beeswarm.empty:
         theme.notice(
-            "empty", "Per-sample SHAP is not available for this target",
-            "The target-level feature summary above is available. Select a target marked "
-            "<b>per-sample</b> to view sample-level values.",
+            "empty", "No per-sample view for this target",
+            "The summary above still applies. Pick a target marked <b>per-sample</b> to see values "
+            "for individual tumors.",
         )
     else:
         beeswarm_figure, beeswarm_long = _beeswarm_plot(beeswarm, int(top_n))
@@ -178,8 +178,9 @@ def render() -> None:
             st.plotly_chart(beeswarm_figure, width="stretch")
             theme.fig_caption(
                 "2",
-                "Each point is one tumor sample. Horizontal position is the SHAP contribution; "
-                "color is the corresponding expression value. Vertical jitter only reduces overlap.",
+                "Each point is one tumor. Left-to-right position is how much that gene's expression "
+                "moved the prediction; color is its expression level. The up-and-down spread only "
+                "keeps points from overlapping.",
             )
             theme.provenance([
                 ("Cohort", cohort), ("Target", target),

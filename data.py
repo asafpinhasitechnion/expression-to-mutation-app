@@ -124,6 +124,7 @@ def load_gtf() -> pd.DataFrame:
     return pd.read_parquet(GTF_PATH)
 
 
+@st.cache_data(show_spinner=False)
 def transcripts_for_gene(gene: str) -> pd.DataFrame:
     """Return transcripts ranked by coding span, then exon span."""
     gtf = load_gtf()
@@ -241,6 +242,7 @@ def shap_feature_counts(cohort: str) -> pd.Series:
     return mat.groupby("target_gene").size().astype(int)
 
 
+@st.cache_data(show_spinner=False)
 def gene_metrics(cohort: str) -> pd.DataFrame:
     """Performance table for the model-performance page: genes within a cohort.
 
@@ -258,6 +260,7 @@ def gene_metrics(cohort: str) -> pd.DataFrame:
 
 
 # ── Coverage (derived from manifest validation) ──────────────────────────────
+@st.cache_data(show_spinner=False)
 def coverage_rows() -> list[dict]:
     m = load_manifest()
     validation = m.get("validation", {}).get("shap_cohorts", {})

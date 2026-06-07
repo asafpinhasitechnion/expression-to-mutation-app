@@ -47,17 +47,20 @@ def _prepare_variants(frame: pd.DataFrame, aggregate: bool, metric: str) -> pd.D
 def _map_variants(frame: pd.DataFrame, model: dict) -> pd.DataFrame:
     frame = frame.copy()
     tx_chrom = normalize_chrom(str(model["chrom"]))
+    on_chrom = frame["Chromosome"].astype(str).map(normalize_chrom).eq(tx_chrom)
+    positions = pd.to_numeric(frame["Start_Position"], errors="coerce")
 
-    def map_one(row: pd.Series) -> float:
-        if normalize_chrom(str(row["Chromosome"])) != tx_chrom:
-            return np.nan
+    # Resolve each genomic position to a transcript coordinate once, not per row.
+    coord_by_pos: dict[int, float] = {}
+    for pos in positions.where(on_chrom).dropna().astype(int).unique():
         try:
-            coordinate = genomic_to_transcript_coord(model, int(row["Start_Position"]))
+            coordinate = genomic_to_transcript_coord(model, int(pos))
         except (TypeError, ValueError):
-            return np.nan
-        return float(coordinate) if coordinate is not None else np.nan
+            coordinate = None
+        coord_by_pos[int(pos)] = float(coordinate) if coordinate is not None else np.nan
 
-    frame["_tx_coord"] = frame.apply(map_one, axis=1)
+    coords = positions.map(lambda pos: coord_by_pos.get(int(pos)) if pd.notna(pos) else np.nan)
+    frame["_tx_coord"] = coords.where(on_chrom)
     return frame
 
 
@@ -203,8 +206,8 @@ def render() -> None:
     theme.page_head(
         "The core",
         "Mutation viewer",
-        "Map observed MC3 variants onto a GENCODE transcript and compare their held-out "
-        "mutation probabilities on a fixed 0-1 scale.",
+        "Place the mutations seen in real tumors along a gene's transcript, and read the model's "
+        "predicted probability for each one. Probabilities use a fixed 0 to 1 scale.",
     )
 
     catalog = data.available_datasets()
@@ -278,14 +281,14 @@ def render() -> None:
 
     if mapped_count < len(mapped):
         theme.notice(
-            "warning", "Some variants are unmapped",
-            f"{len(mapped) - mapped_count:,} displayed variants fall outside the selected transcript's exons "
-            "or use a different chromosome. They remain available in the data table.",
+            "warning", "Some variants are not on the plot",
+            f"{len(mapped) - mapped_count:,} variants fall outside this transcript's exons, or sit on a "
+            "different chromosome. They are still in the table below.",
         )
     if sample_count < 20:
         theme.notice(
-            "warning", "Limited sample size",
-            f"Only {sample_count} tumor samples contribute to this selection. Treat positional summaries cautiously.",
+            "warning", "Few samples",
+            f"Only {sample_count} tumors carry these mutations, so read the positions with caution.",
         )
 
     meta = data.bundle_meta()
@@ -294,9 +297,9 @@ def render() -> None:
         st.plotly_chart(_transcript_plot(mapped, model, gene, transcript), width="stretch")
         theme.fig_caption(
             "1",
-            "Exons are shown above the variant panel; the coding region is teal. Each marker is an "
-            "observed genomic variant positioned on the selected transcript. Marker height is the "
-            f"{theme.def_chip('predicted probability')}; marker size is the contributing sample count.",
+            "The track at the top shows the transcript's exons, with the coding region in teal. Each "
+            "marker is a real mutation placed at its position on the transcript. Height is the "
+            f"{theme.def_chip('predicted probability')}; size is the number of tumors that carry it.",
         )
         theme.provenance([
             ("Cohort", cohort), ("Target", gene), ("Transcript", strip_version(transcript)),
@@ -307,7 +310,7 @@ def render() -> None:
         theme.md(theme.fig_header("02", "Variant summaries"))
         st.plotly_chart(_summary_plot(mapped), width="stretch")
         theme.fig_caption(
-            "2", "Summary views use the currently filtered and aggregated variant table. All probability axes are fixed to 0-1."
+            "2", "The same filtered variants, summarized four ways. Every probability axis runs from 0 to 1."
         )
         theme.provenance([("Cohort", cohort), ("Target", gene), ("Rows", str(len(mapped)))])
 

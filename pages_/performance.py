@@ -98,8 +98,9 @@ def render() -> None:
     theme.page_head(
         "Which models work",
         "Model performance",
-        "Compare mutation targets <b>within one cancer cohort</b>. AUPRC is shown together "
-        "with its mutation-prevalence baseline so predictive lift is not confused with target frequency.",
+        "Compare how well the model predicts each mutated gene <b>within one cancer type</b>. "
+        "AUPRC is shown next to how common the mutation is, so you can see real predictive gain "
+        "rather than just a frequent mutation.",
     )
 
     cohorts = list(data.shap_cohorts())
@@ -134,8 +135,8 @@ def render() -> None:
         st.plotly_chart(_rank_plot(metrics, metric_label, int(top_n)), width="stretch")
         theme.fig_caption(
             "1",
-            f"Genes ranked by {theme.def_chip(metric_label)}. For AUPRC, the beige bar is the "
-            "mutation-prevalence baseline and the green bar is held-out model performance.",
+            f"Genes ranked by {theme.def_chip(metric_label)}. For AUPRC, the beige bar shows how "
+            "common the mutation is and the green bar shows the model's score.",
         )
         theme.provenance([
             ("Cohort", cohort), ("Targets", str(len(metrics))),
@@ -147,8 +148,8 @@ def render() -> None:
         st.plotly_chart(_lift_plot(metrics), width="stretch")
         theme.fig_caption(
             "2",
-            "Each point is one mutation target, ordered from most to least prevalent. Marker color "
-            "and size encode normalized AUPRC; hover text reports the underlying prevalence.",
+            "Each point is one gene, ordered from most to least common. Color and size show "
+            "normalized AUPRC; hover to read the exact prevalence.",
         )
         theme.provenance([("Cohort", cohort), ("Cross-validation", "5-fold"), ("Bundle", meta["sha7"])])
 

@@ -41,44 +41,43 @@ GLOSSARY: dict[str, dict[str, str]] = {
         "abbr": "",
         "short": "The model's estimated likelihood (0-1) that a tumor carries a somatic "
                  "mutation in the target gene, from its expression profile.",
-        "long": "The held-out (cross-validated) probability that a tumor carries a somatic "
-                "mutation in the target gene, produced by the per-cohort multitask neural "
-                "network from the tumor's RNA expression. Reported on a fixed 0-1 scale so "
-                "views stay comparable across genes and cohorts.",
+        "long": "The model's estimated chance, from 0 to 1, that a tumor has a mutation in the "
+                "target gene, based only on its RNA expression. Each tumor is scored by a model "
+                "that never saw it during training (held-out cross-validation), so the scores are "
+                "comparable across genes and cancer types.",
     },
     "prevalence": {
         "abbr": "",
         "short": "The fraction of samples in a cohort that carry a mutation in the target "
                  "gene - the base rate a model must beat.",
-        "long": "The fraction of samples in a cohort that actually carry a non-silent "
-                "mutation in the target gene. It sets the positive-class base rate that any "
-                "model must beat.",
+        "long": "The fraction of tumors in a cancer type that actually carry a mutation in the "
+                "gene. This is the base rate a model has to beat.",
     },
     "AUPRC": {
         "abbr": "area under the PR curve",
         "short": "Area under the precision-recall curve; 0-1, higher is better. Suited to a "
                  "rare positive class.",
-        "long": "Area under the precision-recall curve. A threshold-free summary of ranking "
-                "quality that is well suited to imbalanced (rare-positive) labels. Ranges 0-1; "
-                "higher is better.",
+        "long": "Area under the precision-recall curve. One score for how well the model ranks "
+                "mutated tumors above non-mutated ones, without picking a cutoff. It works well "
+                "when mutations are rare. Runs from 0 to 1; higher is better.",
     },
     "normalized AUPRC": {
         "abbr": "(AUPRC - prevalence) / (1 - prevalence)",
         "short": "AUPRC rescaled against the cohort's prevalence baseline, so rare and common "
                  "targets compare on one axis. 0 = random, 1 = perfect.",
-        "long": "AUPRC rescaled against the prevalence baseline as (AUPRC - prevalence) / "
-                "(1 - prevalence). It equals 0 for random predictions and 1 for perfect "
-                "predictions; negative values indicate below-baseline ranking. This is the "
-                "main metric for comparing predictability across genes and cohorts.",
+        "long": "AUPRC after removing the head start a model gets when a mutation is common: "
+                "(AUPRC - prevalence) / (1 - prevalence). It is 0 for random guessing and 1 for a "
+                "perfect model, and goes below 0 worse than chance. This is the main score for "
+                "comparing genes and cancer types.",
     },
     "SHAP value": {
         "abbr": "",
         "short": "A per-feature contribution to a single prediction. Positive values push "
                  "toward 'mutated'. SHAP describes association, not causation.",
-        "long": "A per-feature contribution to one model prediction (Tree SHAP). It is "
-                "computed from a per-task XGBoost surrogate trained on the same data, used for "
-                "interpretation. Positive values push the prediction toward 'mutated'. SHAP "
-                "identifies predictive association, not causal regulation.",
+        "long": "How much one gene's expression moved a single prediction. Positive values push "
+                "toward 'mutated', negative values push away. SHAP shows association, not cause: an "
+                "important gene helps the model predict the mutation, but need not be linked to it "
+                "biologically. (Computed with Tree SHAP on a matched XGBoost model.)",
     },
 }
 
@@ -227,8 +226,8 @@ a:hover { color: var(--green); }
 .notice .nico{ width:30px; height:30px; border-radius:7px; flex:0 0 auto; display:grid; place-items:center; background:var(--sunk); color:var(--muted); font-size:16px; }
 .notice .ntitle{ font-weight:600; font-size:14px; color:var(--ink); margin-bottom:2px; }
 .notice .nbody{ font-size:13.5px; color:var(--ink-2); line-height:1.5; }
-.notice.neutral{ background:var(--sunk); } .notice.neutral .nico{ background:#ece8db; }
-.notice.gold{ background:var(--gold-tint); border-color:#e7dcab; } .notice.gold .nico{ background:#ecdf9f; color:#7d6c1b; }
+.notice.neutral, .notice.empty{ background:var(--sunk); } .notice.neutral .nico, .notice.empty .nico{ background:#ece8db; }
+.notice.gold, .notice.warning{ background:var(--gold-tint); border-color:#e7dcab; } .notice.gold .nico, .notice.warning .nico{ background:#ecdf9f; color:#7d6c1b; }
 .notice.orange{ background:var(--orange-tint); border-color:#eecdbf; } .notice.orange .nico{ background:#f0c9b6; color:#9c4f2f; }
 .notice.purple{ background:var(--purple-tint); border-color:#e3cfe0; } .notice.purple .nico{ background:#e1cadd; color:var(--purple-dark); }
 
@@ -324,7 +323,10 @@ def provenance(pairs: Sequence[tuple[str, str]]) -> None:
 
 
 # ── Notices / caveat ─────────────────────────────────────────────────────────
-def notice(kind: str, title: str, body_html: str, icon: str = "i") -> None:
+def notice(kind: str, title: str, body_html: str, icon: str | None = None) -> None:
+    if icon is None:
+        icon = {"warning": "⚠", "gold": "⚠", "orange": "⚠",
+                "empty": "∅", "neutral": "i"}.get(kind, "i")
     md(
         f'<div class="notice {esc(kind)}"><span class="nico">{esc(icon)}</span>'
         f'<div class="ntext"><div class="ntitle">{esc(title)}</div>'

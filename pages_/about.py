@@ -15,15 +15,15 @@ def render() -> None:
     theme.page_head(
         "About",
         "Expression to Mutation",
-        "Gene expression can reflect the cellular state associated with a somatic mutation. "
-        "This study asks whether tumor RNA profiles contain enough information to recover mutation status.",
+        "Mutations leave marks on a tumor's gene expression. This study asks whether expression "
+        "alone is enough to tell which genes are mutated.",
     )
 
     md(
-        '<p class="t-sec" style="max-width:76ch">Models were trained separately within TCGA '
-        "cancer types. For each recurrently mutated gene, the model estimates mutation status "
-        "from bulk tumor RNA expression. This application provides the results behind the "
-        "manuscript in an interactive form.</p>"
+        '<p class="t-sec" style="max-width:76ch">We trained a separate model for each TCGA cancer '
+        "type. For every commonly mutated gene, the model predicts whether a tumor carries a "
+        "mutation in that gene, using only its RNA expression. This app lets you explore the "
+        "results behind the manuscript.</p>"
     )
 
     md(
@@ -38,9 +38,9 @@ def render() -> None:
 
     st.markdown("### Explore the results")
     st.markdown(
-        "- **Model performance:** compare mutation targets within a cancer type.\n"
-        "- **Mutation viewer:** inspect observed variants along a selected transcript.\n"
-        "- **SHAP explorer:** examine expression features associated with each prediction."
+        "- **Model performance:** see how well the model predicts each gene, by cancer type.\n"
+        "- **Mutation viewer:** see real mutations laid out along a gene's transcript.\n"
+        "- **SHAP explorer:** see which genes' expression drives each prediction."
     )
 
     c1, c2, c3 = st.columns(3)
