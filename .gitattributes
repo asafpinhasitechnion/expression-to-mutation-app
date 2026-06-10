@@ -1,4 +1,0 @@
-*.parquet filter=lfs diff=lfs merge=lfs -text
-data/*.parquet filter=lfs diff=lfs merge=lfs -text
-shap_bundle/cohorts/*.parquet filter=lfs diff=lfs merge=lfs -text
-shap_bundle/beeswarms/*.zip filter=lfs diff=lfs merge=lfs -text
