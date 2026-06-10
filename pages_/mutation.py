@@ -235,12 +235,23 @@ def render() -> None:
         theme.notice("empty", "No cohorts found", "The selected datasets contain no cohort labels.")
         return
 
+    # Open on a clean, recognizable example (the manuscript's flagship) rather than the
+    # alphabetical first, which is often a sparse or passenger gene.
+    default_cohort = "BRCA" if "BRCA" in cohorts else raw["Cancer"].astype(str).value_counts().idxmax()
     selection = st.columns([1.2, 1.1, 1.7])
     cohort = selection[0].selectbox(
-        "TCGA cohort", cohorts, format_func=lambda value: f"{value} - {data.cohort_label(value)}"
+        "TCGA cohort", cohorts,
+        index=cohorts.index(default_cohort) if default_cohort in cohorts else 0,
+        format_func=lambda value: f"{value} - {data.cohort_label(value)}",
     )
-    genes = data.genes_in(raw, cohort)
-    gene = selection[1].selectbox("Mutation target", genes)
+    genes = sorted(raw.loc[raw["Cancer"].astype(str).eq(cohort), "Hugo_Symbol"].dropna().astype(str).unique())
+    if "TP53" in genes:
+        default_gene = "TP53"
+    else:
+        metrics = data.gene_metrics(cohort)
+        ranked = metrics[metrics["gene"].isin(genes)].sort_values("norm_auprc", ascending=False) if not metrics.empty else metrics
+        default_gene = ranked["gene"].iloc[0] if not ranked.empty else genes[0]
+    gene = selection[1].selectbox("Mutation target", genes, index=genes.index(default_gene))
     transcripts = data.transcripts_for_gene(gene)
     if transcripts.empty:
         theme.notice("warning", "Missing transcript annotation", f"No GENCODE transcript is available for {theme.esc(gene)}.")

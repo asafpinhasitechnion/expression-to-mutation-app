@@ -24,7 +24,6 @@ SHAP_DIR = VIEWER_DIR / "shap_bundle"
 SHAP_INDEX_PATH = SHAP_DIR / "index.json"
 MANIFEST_PATH = VIEWER_DIR / "bundle_manifest.json"
 GTF_PATH = VIEWER_DIR / "gtf_filtered.parquet"
-SEQ_PATH = VIEWER_DIR / "sequences_filtered.parquet"
 
 # SHAP interpretation used a looser gate than the variant analysis (Methods).
 VARIANT_NORM_AUPRC_THRESHOLD = 0.1
