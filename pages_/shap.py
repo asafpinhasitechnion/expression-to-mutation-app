@@ -44,6 +44,26 @@ def _feature_plot(features: pd.DataFrame, top_n: int) -> go.Figure:
     return figure
 
 
+def _relative_expression(values: pd.Series) -> pd.Series:
+    """Scale one feature's expression to SHAP-style robust relative values."""
+    numeric = pd.to_numeric(values, errors="coerce").astype(float)
+    finite = numeric[np.isfinite(numeric)]
+    if finite.empty:
+        return pd.Series(np.nan, index=numeric.index, dtype=float)
+
+    color_min, color_max = np.nanpercentile(finite, [5, 95])
+    if color_min == color_max:
+        color_min, color_max = np.nanpercentile(finite, [1, 99])
+    if color_min == color_max:
+        color_min, color_max = float(finite.min()), float(finite.max())
+    if color_min == color_max:
+        relative = pd.Series(0.5, index=numeric.index, dtype=float)
+        relative[numeric.isna()] = np.nan
+        return relative
+
+    return ((numeric.clip(color_min, color_max) - color_min) / (color_max - color_min)).clip(0, 1)
+
+
 def _beeswarm_plot(frame: pd.DataFrame, max_features: int) -> tuple[go.Figure, pd.DataFrame]:
     feature_columns = [
         column for column in frame.columns
@@ -56,15 +76,6 @@ def _beeswarm_plot(frame: pd.DataFrame, max_features: int) -> tuple[go.Figure, p
     ).sort_values(ascending=False)
     selected = importance.head(max_features).index.tolist()
     selected = list(reversed(selected))
-    expression_values = np.concatenate([
-        pd.to_numeric(frame[f"x_{feature}"], errors="coerce").dropna().to_numpy() for feature in selected
-    ])
-    if len(expression_values):
-        color_min, color_max = np.nanpercentile(expression_values, [2, 98])
-        if color_min == color_max:
-            color_min, color_max = float(color_min) - 1, float(color_max) + 1
-    else:
-        color_min, color_max = -1, 1
 
     figure = go.Figure()
     rng = np.random.default_rng(42)
@@ -72,25 +83,32 @@ def _beeswarm_plot(frame: pd.DataFrame, max_features: int) -> tuple[go.Figure, p
     for y_index, feature in enumerate(selected):
         shap_values = pd.to_numeric(frame[feature], errors="coerce")
         expression = pd.to_numeric(frame[f"x_{feature}"], errors="coerce")
+        relative_expression = _relative_expression(expression)
         valid = shap_values.notna() & expression.notna()
         jitter = rng.uniform(-0.28, 0.28, int(valid.sum()))
         samples = frame.loc[valid, "sample_id"].astype(str) if "sample_id" in frame else pd.Series("", index=frame.index[valid])
         figure.add_trace(go.Scattergl(
             x=shap_values.loc[valid], y=y_index + jitter, mode="markers", showlegend=False,
             marker=dict(
-                size=5.5, color=expression.loc[valid], coloraxis="coloraxis", opacity=0.72,
+                size=5.5, color=relative_expression.loc[valid], coloraxis="coloraxis", opacity=0.72,
                 line=dict(width=0),
             ),
-            customdata=np.column_stack([samples, expression.loc[valid]]),
+            customdata=np.column_stack([
+                samples,
+                expression.loc[valid],
+                relative_expression.loc[valid],
+            ]),
             hovertemplate=(
                 f"<b>{feature}</b><br>Sample: %{{customdata[0]}}<br>SHAP: %{{x:.4f}}<br>"
-                "Expression: %{customdata[1]:.3f}<extra></extra>"
+                "Expression count: %{customdata[1]:.3f}<br>"
+                "Relative expression: %{customdata[2]:.3f}<extra></extra>"
             ),
         ))
         long_rows.append(pd.DataFrame({
             "sample_id": samples.to_numpy(), "feature": feature,
             "shap_value": shap_values.loc[valid].to_numpy(),
             "expression_value": expression.loc[valid].to_numpy(),
+            "relative_expression": relative_expression.loc[valid].to_numpy(),
         }))
     figure.add_vline(x=0, line_color=theme.MUTED, line_width=1)
     figure.update_layout(
@@ -104,8 +122,15 @@ def _beeswarm_plot(frame: pd.DataFrame, max_features: int) -> tuple[go.Figure, p
         ),
         coloraxis=dict(
             colorscale=[[0, theme.BEE_INDIGO], [0.5, theme.BEE_CREAM], [1, theme.BEE_MAGENTA]],
-            cmin=color_min, cmax=color_max,
-            colorbar=dict(title="Expression", thickness=12, len=0.72),
+            cmin=0, cmax=1,
+            colorbar=dict(
+                title="Relative expression",
+                tickmode="array",
+                tickvals=[0, 1],
+                ticktext=["Low", "High"],
+                thickness=12,
+                len=0.72,
+            ),
         ),
     )
     return figure, pd.concat(long_rows, ignore_index=True)
@@ -179,8 +204,9 @@ def render() -> None:
             theme.fig_caption(
                 "2",
                 "Each point is one tumor. Left-to-right position is how much that gene's expression "
-                "moved the prediction; color is its expression level. The up-and-down spread only "
-                "keeps points from overlapping.",
+                "moved the prediction; color is expression relative to other tumors for the same gene "
+                "(5th-95th percentiles define Low and High). The up-and-down spread only keeps points "
+                "from overlapping.",
             )
             theme.provenance([
                 ("Cohort", cohort), ("Target", target),
