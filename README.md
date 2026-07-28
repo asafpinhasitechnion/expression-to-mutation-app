@@ -1,15 +1,10 @@
 # Mutation Viewer
 
 This is the maintained manuscript application. It uses the current mutation-prediction
-bundle under `Results/TCGA_results/Lean_multitask_nn` and the same MC3 event-level inputs
-and normalized-AUPRC threshold used by `Figure_Scripts/Figure3.ipynb`.
+bundle under `Results/TCGA_results/Lean_multitask_nn_log` and the same MC3 event-level
+inputs and normalized-AUPRC threshold used by `Figure_Scripts/Figure3.ipynb`.
 
-The repository uses Git LFS for Parquet and cohort ZIP assets. Install Git LFS before
-cloning or deploying the application:
-
-```bash
-git lfs install
-```
+Parquet and cohort ZIP assets are stored directly in the repository, not in Git LFS.
 
 The application contains four functional pages:
 
@@ -24,7 +19,7 @@ The application contains four functional pages:
 From the `Final_E2M` project root:
 
 ```powershell
-python Figure_Scripts/mutation_viewer/build_bundle.py
+python Figure_Scripts/mutation_viewer/build_bundle.py --results-dir Results/TCGA_results/Lean_multitask_nn_log
 ```
 
 This rebuilds mutation and reference data while preserving the existing indexed SHAP
