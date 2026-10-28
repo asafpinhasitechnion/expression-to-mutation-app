@@ -218,7 +218,7 @@ def render() -> None:
         theme.notice(
             "warning", "Transcript reference unavailable",
             "The variant tables are present, but <code>gtf_filtered.parquet</code> has not been built. "
-            "Run <code>python Figure_Scripts/mutation_viewer/build_bundle.py</code>.",
+            "Run <code>python build_bundle.py --analysis-root &lt;E2M-analyses&gt;</code>.",
         )
         return
 

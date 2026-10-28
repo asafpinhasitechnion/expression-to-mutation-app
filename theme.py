@@ -39,12 +39,13 @@ BEE_MAGENTA = "#E12A5F"
 GLOSSARY: dict[str, dict[str, str]] = {
     "predicted probability": {
         "abbr": "",
-        "short": "The model's estimated likelihood (0-1) that a tumor carries a somatic "
-                 "mutation in the target gene, from its expression profile.",
-        "long": "The model's estimated chance, from 0 to 1, that a tumor has a mutation in the "
-                "target gene, based only on its RNA expression. Each tumor is scored by a model "
-                "that never saw it during training (held-out cross-validation), so the scores are "
-                "comparable across genes and cancer types.",
+        "short": "The model's score (0-1) for a tumor carrying a somatic mutation in the target "
+                 "gene, from its expression profile. Higher means more likely mutated.",
+        "long": "The model's score, from 0 to 1, for a tumor having a mutation in the target gene, "
+                "based only on its RNA expression. Each tumor is scored by a model that never saw it "
+                "during training (5-fold cross-validation). The model was trained with a class-weighted "
+                "loss, so the score ranks tumors within a gene but is not a calibrated probability: "
+                "compare scores between tumors for the same gene, not between genes.",
     },
     "prevalence": {
         "abbr": "",

@@ -1,4 +1,13 @@
-"""Build the manuscript mutation-viewer data bundle from current E2M results."""
+"""Build the Mutation Viewer data bundle from the E2M-analyses outputs.
+
+Reads, under --analysis-root:
+- Runs/TCGA/output/<COHORT>/cv/metrics.csv and oof_probabilities.csv (multitask network, out-of-fold)
+- Runs/TCGA/output/<COHORT>/shap/<TARGET>/feature_summary.csv and sample_shap_top_features.csv.gz
+- Runs/TCGA/data/mutation_events/<COHORT>_mc3.txt.gz (MC3 events, GRCh37)
+- Figures/Figure3/figure3_helpers.py, so the variants match Figure 3
+
+Writes data/, shap_bundle/, gtf_filtered.parquet and bundle_manifest.json next to this script.
+"""
 
 from __future__ import annotations
 
@@ -6,427 +15,258 @@ import argparse
 import gzip
 import hashlib
 import json
-import os
 import re
 import shutil
-import stat
 import sys
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
+from zipfile import ZIP_STORED, ZipFile
 
 import pandas as pd
 
-
 VIEWER_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = VIEWER_DIR.parents[1]
-FIGURE_SCRIPT_DIR = PROJECT_ROOT / "Figure_Scripts"
-if str(FIGURE_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(FIGURE_SCRIPT_DIR))
+DATA_DIR = VIEWER_DIR / "data"
+SHAP_DIR = VIEWER_DIR / "shap_bundle"
+GTF_OUTPUT = VIEWER_DIR / "gtf_filtered.parquet"
+MANIFEST_PATH = VIEWER_DIR / "bundle_manifest.json"
 
-from figure3_helpers import (  # noqa: E402
-    build_missense_only_df,
-    build_silent_only_df,
-    load_full_mutation_maf,
-    normalize_sample4,
-)
-from build_shap_bundle import build_shap_bundle  # noqa: E402
-
-
-DEFAULT_RESULTS_DIR = PROJECT_ROOT / "Results" / "TCGA_results" / "Lean_multitask_nn"
-DEFAULT_MC3_DIR = (
-    PROJECT_ROOT.parents[1]
-    / "Data"
-    / "RNA"
-    / "TCGA"
-    / "Xena"
-    / "tcga_xena_mutations_data"
-)
-DEFAULT_GTF = PROJECT_ROOT.parent / "input" / "gencode.v23lift37.annotation.gtf.gz"
-DEFAULT_FASTA = PROJECT_ROOT.parent / "input" / "gencode.v23lift37.transcripts.fa.gz"
-
+NOT_COHORTS = {"all", "tmb"}  # pan-cancer model and TMB regression
+VARIANT_EXCLUDED = ["all", "UVM"]  # as in Figure 3
 VARIANT_COLUMNS = {
-    "chr": "Chromosome",
-    "start": "Start_Position",
-    "end": "End_Position",
-    "reference": "Reference_Allele",
-    "alt": "Tumor_Seq_Allele2",
+    "chr": "Chromosome", "start": "Start_Position", "end": "End_Position",
+    "reference": "Reference_Allele", "alt": "Tumor_Seq_Allele2",
 }
 
 
-def portable_path(path: Path) -> str:
-    path = path.resolve()
-    try:
-        return path.relative_to(PROJECT_ROOT).as_posix()
-    except ValueError:
-        return path.name
-
-
-def sha256sum(path: Path, chunk_size: int = 1024 * 1024) -> str:
+def sha256sum(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
-        while chunk := handle.read(chunk_size):
+        while chunk := handle.read(1 << 20):
             digest.update(chunk)
     return digest.hexdigest()
 
 
-def cohort_names(results_dir: Path, requested: list[str] | None) -> list[str]:
-    if requested:
-        return sorted({name.upper() for name in requested})
-    excluded = {"all", "shap_beeswarm", "tmb_prediction"}
-    names = []
-    for path in results_dir.iterdir():
-        if path.is_dir() and path.name.lower() not in excluded:
-            if (path / "kfold_prediction" / "summary.csv").exists():
-                names.append(path.name)
-    # Figure 3 excludes UVM because its small cohort was not used in that analysis.
-    return sorted(name for name in names if name.upper() != "UVM")
-
-
-def selected_genes(summary_path: Path, threshold: float) -> list[str]:
-    summary = pd.read_csv(summary_path, index_col=0)
-    score = (summary["auprc_mean"] - summary["prevalence_mean"]) / (
-        1.0 - summary["prevalence_mean"]
-    )
-    return score.loc[score > threshold].sort_values(ascending=False).index.astype(str).tolist()
-
-
-def prediction_long(probability_path: Path, genes: list[str], cancer: str) -> pd.DataFrame:
-    probabilities = pd.read_csv(probability_path, index_col=0)
-    genes = [gene for gene in genes if gene in probabilities.columns]
-    if not genes:
-        return pd.DataFrame(columns=["Cancer", "sample", "gene", "pred_prob"])
-    out = (
-        probabilities.loc[:, genes]
-        .rename_axis(index="sample", columns="gene")
-        .stack()
-        .rename("pred_prob")
-        .reset_index()
-    )
-    out.insert(0, "Cancer", cancer)
-    return out
-
-
-def standardize_variant_columns(frame: pd.DataFrame) -> pd.DataFrame:
-    frame = frame.rename(columns={key: value for key, value in VARIANT_COLUMNS.items() if key in frame})
-    if "Tumor_Sample_Barcode" not in frame and "sample4" in frame:
-        frame["Tumor_Sample_Barcode"] = frame["sample4"]
-    return frame
-
-
-def build_variant_data(
-    results_dir: Path,
-    mc3_dir: Path,
-    cohorts: list[str],
-    threshold: float,
-    data_dir: Path,
-) -> dict:
-    data_dir.mkdir(parents=True, exist_ok=True)
-    silent_frames = []
-    missense_frames = []
-    cohort_summary = []
-
-    for index, cancer in enumerate(cohorts, start=1):
-        cohort_dir = results_dir / cancer
-        summary_path = cohort_dir / "kfold_prediction" / "summary.csv"
-        probability_path = (
-            cohort_dir
-            / "kfold_prediction"
-            / "combined_predictions"
-            / "probabilities.csv"
-        )
-        event_path = mc3_dir / f"{cancer}_mc3.txt.gz"
-        missing = [path for path in (summary_path, probability_path, event_path) if not path.exists()]
-        if missing:
-            raise FileNotFoundError(f"Missing inputs for {cancer}: {missing}")
-
-        genes = selected_genes(summary_path, threshold)
-        pred_long = prediction_long(probability_path, genes, cancer)
-        print(
-            f"[{index}/{len(cohorts)}] {cancer}: "
-            f"{len(genes)} selected genes, {len(pred_long):,} prediction rows",
-            flush=True,
-        )
-        if pred_long.empty:
-            cohort_summary.append(
-                {"cohort": cancer, "selected_genes": 0, "silent_rows": 0, "missense_rows": 0}
-            )
-            continue
-
-        maf = load_full_mutation_maf(event_path, pass_only=True).assign(
-            source_file=event_path.name,
-        )
-        silent = standardize_variant_columns(build_silent_only_df(maf, pred_long))
-        missense = standardize_variant_columns(build_missense_only_df(maf, pred_long))
-        silent_frames.append(silent)
-        missense_frames.append(missense)
-        cohort_summary.append(
-            {
-                "cohort": cancer,
-                "selected_genes": len(genes),
-                "silent_rows": len(silent),
-                "missense_rows": len(missense),
-            }
-        )
-
-    silent_all = pd.concat(silent_frames, ignore_index=True) if silent_frames else pd.DataFrame()
-    missense_all = pd.concat(missense_frames, ignore_index=True) if missense_frames else pd.DataFrame()
-    silent_path = data_dir / "silent_mutations.parquet"
-    missense_path = data_dir / "missense_mutations.parquet"
-    silent_all.to_parquet(silent_path, index=False)
-    missense_all.to_parquet(missense_path, index=False)
-
-    return {
-        "normalized_auprc_threshold": threshold,
-        "cohorts": cohort_summary,
-        "files": [file_record(silent_path, silent_all), file_record(missense_path, missense_all)],
-    }
-
-
-def parse_gtf_attributes(raw: str) -> dict[str, str]:
-    return dict(re.findall(r'(\w+) "([^"]+)"', raw))
-
-
-def collect_viewer_genes(data_dir: Path) -> set[str]:
-    genes: set[str] = set()
-    for path in sorted(data_dir.glob("*.parquet")):
-        frame = pd.read_parquet(path, columns=["Hugo_Symbol"])
-        genes.update(frame["Hugo_Symbol"].dropna().astype(str))
-    return genes
-
-
-def build_reference_data(gtf_path: Path, fasta_path: Path, data_dir: Path) -> dict:
-    genes = collect_viewer_genes(data_dir)
-    rows = []
-    transcript_ids: set[str] = set()
-    keep_features = {"transcript", "exon", "CDS"}
-
-    with gzip.open(gtf_path, "rt") as handle:
-        for line in handle:
-            if line.startswith("#"):
-                continue
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 9 or parts[2] not in keep_features:
-                continue
-            attrs = parse_gtf_attributes(parts[8])
-            if attrs.get("gene_name") not in genes:
-                continue
-            transcript_id = attrs.get("transcript_id", "")
-            if not transcript_id:
-                continue
-            transcript_ids.add(transcript_id.split(".")[0])
-            rows.append(
-                {
-                    "feature": parts[2],
-                    "chrom": parts[0],
-                    "start": int(parts[3]),
-                    "end": int(parts[4]),
-                    "strand": parts[6],
-                    "gene_name": attrs.get("gene_name", ""),
-                    "gene_id": attrs.get("gene_id", ""),
-                    "transcript_id": transcript_id,
-                    "transcript_name": attrs.get("transcript_name", ""),
-                }
-            )
-
-    gtf_frame = pd.DataFrame(rows)
-    sequences: dict[str, str] = {}
-    current_id = None
-    current_sequence: list[str] = []
-    with gzip.open(fasta_path, "rt") as handle:
-        for line in handle:
-            line = line.rstrip()
-            if line.startswith(">"):
-                if current_id is not None:
-                    sequences[current_id] = "".join(current_sequence)
-                candidate = line[1:].split("|")[0].split(".")[0]
-                current_id = candidate if candidate in transcript_ids else None
-                current_sequence = []
-            elif current_id is not None:
-                current_sequence.append(line)
-    if current_id is not None:
-        sequences[current_id] = "".join(current_sequence)
-
-    sequence_frame = pd.DataFrame(
-        {"transcript_id": list(sequences), "sequence": list(sequences.values())}
-    )
-    gtf_output = VIEWER_DIR / "gtf_filtered.parquet"
-    sequence_output = VIEWER_DIR / "sequences_filtered.parquet"
-    gtf_frame.to_parquet(gtf_output, index=False)
-    sequence_frame.to_parquet(sequence_output, index=False)
-    return {
-        "genes": len(genes),
-        "transcripts_in_gtf": int(gtf_frame["transcript_id"].nunique()),
-        "transcript_sequences": len(sequence_frame),
-        "files": [file_record(gtf_output, gtf_frame), file_record(sequence_output, sequence_frame)],
-    }
-
-
-def reset_directory(path: Path) -> None:
-    def remove_readonly(function, target, _exc_info):
-        os.chmod(target, stat.S_IWRITE)
-        function(target)
-
-    if path.exists():
-        shutil.rmtree(path, onerror=remove_readonly)
-    path.mkdir(parents=True, exist_ok=True)
-
-
 def file_record(path: Path, frame: pd.DataFrame | None = None) -> dict:
-    record = {
-        "path": path.relative_to(VIEWER_DIR).as_posix(),
-        "bytes": path.stat().st_size,
-        "sha256": sha256sum(path),
-    }
+    record = {"path": path.relative_to(VIEWER_DIR).as_posix(), "bytes": path.stat().st_size, "sha256": sha256sum(path)}
     if frame is not None:
         record.update({"rows": len(frame), "columns": frame.columns.tolist()})
     return record
 
 
-def existing_shap_bundle_info(shap_dir: Path) -> dict:
-    index_path = shap_dir / "index.json"
-    if not index_path.exists():
-        raise FileNotFoundError(
-            "No existing SHAP bundle found. Supply --shap-source with the complete server export."
-        )
-    index = json.loads(index_path.read_text(encoding="utf-8"))
-    cohorts = index.get("cohorts", {})
-    cohort_summary = {
-        cohort: {
-            key: values.get(key)
-            for key in (
-                "metric_targets",
-                "shap_targets",
-                "shap_rows",
-                "beeswarm_target_count",
-                "archive_bytes",
-                "archive_sha256",
-                "derived_summary_targets",
-            )
+def cohort_names(results_dir: Path) -> list[str]:
+    return sorted(p.name for p in results_dir.iterdir()
+                  if p.is_dir() and p.name.lower() not in NOT_COHORTS and (p / "cv" / "metrics.csv").exists())
+
+
+def read_metrics(results_dir: Path, cohort: str) -> pd.DataFrame:
+    """Pooled out-of-fold metrics of the evaluable targets."""
+    metrics = pd.read_csv(results_dir / cohort / "cv" / "metrics.csv")
+    metrics = metrics[metrics["evaluable"].astype(bool)].rename(columns={"target": "gene"})
+    return metrics[["gene", "n_samples", "n_positive", "prevalence", "auprc", "normalized_auprc", "roc_auc"]]
+
+
+# ── Variants ─────────────────────────────────────────────────────────────────
+def build_variant_data(analysis_root: Path, results_dir: Path, cohorts: list[str], threshold: float) -> dict:
+    sys.path[:0] = [str(analysis_root / "Figures" / "Figure3"), str(analysis_root / "Figures")]
+    from figure3_helpers import build_missense_only_df, build_silent_only_df, load_full_mutation_maf
+
+    event_dir = analysis_root / "Runs" / "TCGA" / "data" / "mutation_events"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    silent_frames, missense_frames, summary = [], [], []
+    for cohort in cohorts:
+        metrics = read_metrics(results_dir, cohort)
+        genes = metrics.loc[metrics["normalized_auprc"] > threshold].sort_values("normalized_auprc", ascending=False)["gene"].tolist()
+        probabilities = pd.read_csv(results_dir / cohort / "cv" / "oof_probabilities.csv", index_col=0)
+        genes = [g for g in genes if g in probabilities.columns]
+        pred_long = (probabilities[genes].rename_axis(index="sample", columns="gene").stack()
+                     .rename("pred_prob").reset_index().assign(Cancer=cohort))
+        print(f"{cohort}: {len(genes)} genes", flush=True)
+        if not genes:
+            summary.append({"cohort": cohort, "selected_genes": 0, "silent_rows": 0, "missense_rows": 0})
+            continue
+        event_path = event_dir / f"{cohort}_mc3.txt.gz"
+        maf = load_full_mutation_maf(event_path, pass_only=True).assign(source_file=event_path.name)
+        silent = build_silent_only_df(maf, pred_long).rename(columns=VARIANT_COLUMNS)
+        missense = build_missense_only_df(maf, pred_long).rename(columns=VARIANT_COLUMNS)
+        silent_frames.append(silent)
+        missense_frames.append(missense)
+        summary.append({"cohort": cohort, "selected_genes": len(genes), "silent_rows": len(silent),
+                        "missense_rows": len(missense)})
+
+    files = []
+    for name, frames in (("silent_mutations.parquet", silent_frames), ("missense_mutations.parquet", missense_frames)):
+        frame = pd.concat(frames, ignore_index=True)
+        frame.to_parquet(DATA_DIR / name, index=False)
+        files.append(file_record(DATA_DIR / name, frame))
+    return {"normalized_auprc_threshold": threshold, "cohorts": summary, "files": files}
+
+
+# ── SHAP ─────────────────────────────────────────────────────────────────────
+def beeswarm_table(path: Path) -> pd.DataFrame:
+    """Per-sample SHAP of a target's top features, one column per feature plus x_<feature> for its expression
+    (as Figures/Figure2 load_beeswarm_table)."""
+    long = pd.read_csv(path)
+    features = long["feature"].drop_duplicates().tolist()  # SHAP rank order
+    shap = long.pivot(index="sample_id", columns="feature", values="shap_value")[features]
+    expression = long.pivot(index="sample_id", columns="feature", values="expression_value")[features].add_prefix("x_")
+    frame = pd.concat([shap, expression], axis=1).astype("float32").reset_index()  # float32 as written by the run
+    frame.columns.name = None
+    return frame
+
+
+def build_shap_bundle(results_dir: Path, cohorts: list[str]) -> dict:
+    if SHAP_DIR.exists():
+        shutil.rmtree(SHAP_DIR)
+    (SHAP_DIR / "cohorts").mkdir(parents=True)
+    (SHAP_DIR / "beeswarms").mkdir()
+    index = {"version": 2, "generated_at_utc": datetime.now(timezone.utc).isoformat(), "cohorts": {}}
+    for cohort in cohorts:
+        metrics = read_metrics(results_dir, cohort)
+        metrics_path = SHAP_DIR / "cohorts" / f"{cohort}_metrics.parquet"
+        metrics.to_parquet(metrics_path, index=False)
+
+        target_dirs = sorted(p for p in (results_dir / cohort / "shap").glob("*") if (p / "feature_summary.csv").exists())
+        features = []
+        archive_path = SHAP_DIR / "beeswarms" / f"{cohort}.zip"
+        beeswarm_targets = []
+        with ZipFile(archive_path, "w", compression=ZIP_STORED, allowZip64=True) as archive:
+            for target_dir in target_dirs:
+                summary = pd.read_csv(target_dir / "feature_summary.csv")
+                features.append(summary.loc[summary["mean_abs_shap"] > 0, ["target", "feature", "mean_abs_shap", "mean_shap"]])
+                sample_path = target_dir / "sample_shap_top_features.csv.gz"
+                if sample_path.exists():
+                    buffer = BytesIO()
+                    beeswarm_table(sample_path).to_parquet(buffer, index=False)
+                    archive.writestr(f"beeswarm_{target_dir.name}.parquet", buffer.getvalue())
+                    beeswarm_targets.append(target_dir.name)
+        features = (pd.concat(features, ignore_index=True) if features
+                    else pd.DataFrame(columns=["target", "feature", "mean_abs_shap", "mean_shap"]))
+        features = features.rename(columns={"target": "target_gene"}).assign(cohort=cohort)
+        features = features[["cohort", "target_gene", "feature", "mean_abs_shap", "mean_shap"]]
+        features_path = SHAP_DIR / "cohorts" / f"{cohort}_features.parquet"
+        features.to_parquet(features_path, index=False)
+        if not beeswarm_targets:
+            archive_path.unlink()
+
+        index["cohorts"][cohort] = {
+            "metrics_file": f"cohorts/{metrics_path.name}",
+            "features_file": f"cohorts/{features_path.name}",
+            "metric_targets": int(metrics["gene"].nunique()),
+            "shap_targets": int(features["target_gene"].nunique()),
+            "shap_rows": len(features),
+            "archive": f"beeswarms/{archive_path.name}" if beeswarm_targets else None,
+            "beeswarm_targets": beeswarm_targets,
+            "beeswarm_target_count": len(beeswarm_targets),
+            "archive_bytes": archive_path.stat().st_size if beeswarm_targets else 0,
+            "archive_sha256": sha256sum(archive_path) if beeswarm_targets else None,
         }
-        for cohort, values in cohorts.items()
-    }
+        print(f"{cohort}: {len(target_dirs)} SHAP targets", flush=True)
+    (SHAP_DIR / "index.json").write_text(json.dumps(index, indent=2), encoding="utf-8")
+    cohorts_info = {c: {k: v[k] for k in ("metric_targets", "shap_targets", "shap_rows", "beeswarm_target_count",
+                                          "archive_bytes", "archive_sha256")}
+                    for c, v in index["cohorts"].items()}
     return {
-        "format": "indexed_cohort_shap_bundle_v1",
-        "index": str(index_path.relative_to(VIEWER_DIR)),
-        "beeswarm_source": index.get("beeswarm_source"),
+        "index": "shap_bundle/index.json",
         "cohort_count": len(cohorts),
-        "metric_target_count": sum(v.get("metric_targets", 0) for v in cohorts.values()),
-        "shap_target_count": sum(v.get("shap_targets", 0) for v in cohorts.values()),
-        "beeswarm_target_count": sum(v.get("beeswarm_target_count", 0) for v in cohorts.values()),
-        "cohorts": cohort_summary,
+        "metric_target_count": sum(v["metric_targets"] for v in cohorts_info.values()),
+        "shap_target_count": sum(v["shap_targets"] for v in cohorts_info.values()),
+        "beeswarm_target_count": sum(v["beeswarm_target_count"] for v in cohorts_info.values()),
+        "cohorts": cohorts_info,
     }
 
 
-def validate_bundle(results_dir: Path, data_dir: Path, shap_dir: Path) -> dict:
+# ── Transcript reference ─────────────────────────────────────────────────────
+def build_reference_data(gtf_path: Path) -> dict:
+    genes = set()
+    for path in sorted(DATA_DIR.glob("*.parquet")):
+        genes.update(pd.read_parquet(path, columns=["Hugo_Symbol"])["Hugo_Symbol"].dropna().astype(str))
+    rows = []
+    with gzip.open(gtf_path, "rt") as handle:
+        for line in handle:
+            if line.startswith("#"):
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 9 or parts[2] not in {"transcript", "exon", "CDS"}:
+                continue
+            attrs = dict(re.findall(r'(\w+) "([^"]+)"', parts[8]))
+            if attrs.get("gene_name") not in genes or not attrs.get("transcript_id"):
+                continue
+            rows.append({
+                "feature": parts[2], "chrom": parts[0], "start": int(parts[3]), "end": int(parts[4]),
+                "strand": parts[6], "gene_name": attrs["gene_name"], "gene_id": attrs.get("gene_id", ""),
+                "transcript_id": attrs["transcript_id"], "transcript_name": attrs.get("transcript_name", ""),
+            })
+    gtf = pd.DataFrame(rows)
+    gtf.to_parquet(GTF_OUTPUT, index=False)
+    return {"genes": len(genes), "genes_in_gtf": int(gtf["gene_name"].nunique()),
+            "transcripts_in_gtf": int(gtf["transcript_id"].nunique()), "files": [file_record(GTF_OUTPUT, gtf)]}
+
+
+# ── Validation ───────────────────────────────────────────────────────────────
+def validate_bundle(results_dir: Path, shap_info: dict) -> dict:
+    """Every variant's probability must equal the current out-of-fold probability."""
     results = {"variant_files": {}, "shap_cohorts": {}}
     for name in ("silent_mutations.parquet", "missense_mutations.parquet"):
-        path = data_dir / name
-        frame = pd.read_parquet(path)
-        required = {
-            "Cancer",
-            "sample4",
-            "Hugo_Symbol",
-            "pred_prob",
-            "Chromosome",
-            "Start_Position",
-        }
-        missing = sorted(required.difference(frame.columns))
-        if missing:
-            raise ValueError(f"{path} is missing required columns: {missing}")
-        mismatches = 0
-        checked = 0
-        for cancer, group in frame.groupby("Cancer"):
-            probability_path = (
-                results_dir
-                / str(cancer)
-                / "kfold_prediction"
-                / "combined_predictions"
-                / "probabilities.csv"
-            )
-            probabilities = pd.read_csv(probability_path, index_col=0)
-            probabilities.index = normalize_sample4(pd.Series(probabilities.index)).to_numpy()
+        frame = pd.read_parquet(DATA_DIR / name)
+        checked = mismatches = 0
+        for cohort, group in frame.groupby("Cancer"):
+            probabilities = pd.read_csv(results_dir / str(cohort) / "cv" / "oof_probabilities.csv", index_col=0)
+            probabilities.index = probabilities.index.str[:15]  # TCGA-XX-XXXX-01, as sample4
             lookup = group[["sample4", "Hugo_Symbol", "pred_prob"]].drop_duplicates()
-            current = []
-            for row in lookup.itertuples(index=False):
-                value = probabilities.at[row.sample4, row.Hugo_Symbol]
-                current.append(value)
-            delta = (lookup["pred_prob"].to_numpy() - pd.Series(current).to_numpy())
-            checked += len(delta)
-            mismatches += int((abs(delta) > 1e-12).sum())
+            current = probabilities.stack().reindex(pd.MultiIndex.from_frame(lookup[["sample4", "Hugo_Symbol"]]))
+            mismatches += int((abs(lookup["pred_prob"].to_numpy() - current.to_numpy()) > 1e-12).sum())
+            checked += len(lookup)
         if mismatches:
-            raise ValueError(f"{name}: {mismatches}/{checked} probabilities differ from current results")
+            raise ValueError(f"{name}: {mismatches}/{checked} probabilities differ from the current results")
         results["variant_files"][name] = {"rows": len(frame), "probabilities_checked": checked}
-
-    shap_index_path = shap_dir / "index.json"
-    if shap_index_path.exists():
-        shap_index = json.loads(shap_index_path.read_text(encoding="utf-8"))
-        for cohort, values in shap_index.get("cohorts", {}).items():
-            results["shap_cohorts"][cohort] = {
-                "metric_targets": values.get("metric_targets", 0),
-                "shap_targets": values.get("shap_targets", 0),
-                "shap_rows": values.get("shap_rows", 0),
-                "beeswarm_targets": values.get("beeswarm_target_count", 0),
-            }
+    for cohort, values in shap_info["cohorts"].items():
+        results["shap_cohorts"][cohort] = {
+            "metric_targets": values["metric_targets"], "shap_targets": values["shap_targets"],
+            "shap_rows": values["shap_rows"], "beeswarm_targets": values["beeswarm_target_count"],
+        }
     return results
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
-    parser.add_argument("--mc3-dir", type=Path, default=DEFAULT_MC3_DIR)
-    parser.add_argument("--shap-source", type=Path)
-    parser.add_argument("--gtf", type=Path, default=DEFAULT_GTF)
-    parser.add_argument("--fasta", type=Path, default=DEFAULT_FASTA)
-    parser.add_argument("--normalized-auprc-threshold", type=float, default=0.1)
-    parser.add_argument("--cohorts", nargs="+")
-    parser.add_argument("--skip-variants", action="store_true")
-    parser.add_argument("--skip-shap", action="store_true")
-    parser.add_argument("--skip-reference", action="store_true")
-    return parser.parse_args()
-
-
 def main() -> None:
-    args = parse_args()
-    data_dir = VIEWER_DIR / "data"
-    shap_dir = VIEWER_DIR / "shap_bundle"
-    cohorts = cohort_names(args.results_dir, args.cohorts)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--analysis-root", type=Path, required=True, help="E2M-analyses checkout")
+    parser.add_argument("--gtf", type=Path, help="GENCODE v23lift37 (GRCh37, as MC3) annotation GTF; "
+                        "default Runs/TCGA/data/annotation/gencode.v23lift37.annotation.gtf.gz")
+    parser.add_argument("--normalized-auprc-threshold", type=float, default=0.1, help="variant genes, as Figure 3")
+    args = parser.parse_args()
+
+    analysis_root = args.analysis_root.resolve()
+    results_dir = analysis_root / "Runs" / "TCGA" / "output"
+    gtf = args.gtf or analysis_root / "Runs" / "TCGA" / "data" / "annotation" / "gencode.v23lift37.annotation.gtf.gz"
+    cohorts = cohort_names(results_dir)
+    variant_cohorts = [c for c in cohorts if c not in VARIANT_EXCLUDED]
+    commit = (analysis_root / ".git" / "HEAD").read_text().strip()
+    if commit.startswith("ref: "):
+        ref = analysis_root / ".git" / commit[5:]
+        commit = ref.read_text().strip() if ref.exists() else commit
+
     manifest = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "project_root": ".",
         "sources": {
-            "results_dir": portable_path(args.results_dir),
-            "mc3_dir": portable_path(args.mc3_dir),
-            "gtf": portable_path(args.gtf),
-            "fasta": portable_path(args.fasta),
+            "analysis_repository": "github.com/asafpinhasitechnion/E2M-analyses",
+            "analysis_commit": commit,
+            "results_dir": "Runs/TCGA/output",
+            "mc3_dir": "Runs/TCGA/data/mutation_events",
+            "gtf": gtf.name,
         },
         "analysis_scope": {
-            "variant_cohorts": cohorts,
-            "excluded_by_default": ["all", "UVM"],
-            "reason": "Matches the maintained Figure 3 mutation-effect analysis scope.",
+            "variant_cohorts": variant_cohorts,
+            "excluded_by_default": VARIANT_EXCLUDED,
+            "reason": "Variant data matches the Figure 3 mutation-effect analysis (cancer-specific models, UVM excluded).",
         },
     }
-
-    if not args.skip_variants:
-        manifest["variants"] = build_variant_data(
-            args.results_dir,
-            args.mc3_dir,
-            cohorts,
-            args.normalized_auprc_threshold,
-            data_dir,
-        )
-    if not args.skip_shap:
-        if args.shap_source is None:
-            manifest["shap"] = existing_shap_bundle_info(shap_dir)
-        else:
-            manifest["sources"]["shap_source"] = portable_path(args.shap_source)
-            manifest["shap"] = build_shap_bundle(args.results_dir, args.shap_source, shap_dir)
-    if not args.skip_reference:
-        manifest["reference"] = build_reference_data(args.gtf, args.fasta, data_dir)
-
-    manifest["validation"] = validate_bundle(args.results_dir, data_dir, shap_dir)
-    manifest_path = VIEWER_DIR / "bundle_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"Bundle complete: {manifest_path}")
+    manifest["variants"] = build_variant_data(analysis_root, results_dir, variant_cohorts, args.normalized_auprc_threshold)
+    manifest["shap"] = build_shap_bundle(results_dir, cohorts)
+    manifest["reference"] = build_reference_data(gtf)
+    manifest["validation"] = validate_bundle(results_dir, manifest["shap"])
+    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"Bundle complete: {MANIFEST_PATH}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ runOnSave = true
 [browser]
 gatherUsageStats = false
 
-# Theme inherited from the manuscript figure palette (see styles.css design system).
+# Theme from the manuscript figure palette (theme.py).
 # Green is the primary accent; page is a faint warm off-white; surfaces are white.
 [theme]
 base = "light"

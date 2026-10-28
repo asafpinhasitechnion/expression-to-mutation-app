@@ -12,8 +12,8 @@ import theme
 
 
 METRICS = {
-    "AUPRC": ("auprc_mean", "AUPRC", theme.GREEN),
-    "Prevalence": ("prevalence_mean", "Mutation prevalence", theme.ORANGE),
+    "AUPRC": ("auprc", "AUPRC", theme.GREEN),
+    "Prevalence": ("prevalence", "Mutation prevalence", theme.ORANGE),
     "Normalized AUPRC": ("norm_auprc", "Normalized AUPRC", theme.PURPLE),
     "SHAP features": ("n_shap_features", "Features with non-zero mean SHAP", theme.TEAL),
 }
@@ -25,7 +25,7 @@ def _rank_plot(frame: pd.DataFrame, metric_label: str, top_n: int) -> go.Figure:
     figure = go.Figure()
     if metric_label == "AUPRC":
         figure.add_bar(
-            x=plot["prevalence_mean"], y=plot["gene"], orientation="h",
+            x=plot["prevalence"], y=plot["gene"], orientation="h",
             name="Prevalence baseline", marker_color=theme.BEIGE,
             marker_line_color="#D8CDAF", marker_line_width=0.5,
             hovertemplate="<b>%{y}</b><br>Prevalence: %{x:.3f}<extra></extra>",
@@ -34,7 +34,7 @@ def _rank_plot(frame: pd.DataFrame, metric_label: str, top_n: int) -> go.Figure:
         x=plot[column], y=plot["gene"], orientation="h", name=axis_label,
         marker_color=color, opacity=0.9,
         customdata=np.column_stack([
-            plot["auprc_mean"], plot["prevalence_mean"], plot["norm_auprc"],
+            plot["auprc"], plot["prevalence"], plot["norm_auprc"],
             plot["n_shap_features"],
         ]),
         hovertemplate=(
@@ -59,11 +59,11 @@ def _rank_plot(frame: pd.DataFrame, metric_label: str, top_n: int) -> go.Figure:
 
 
 def _lift_plot(frame: pd.DataFrame) -> go.Figure:
-    plot = frame.dropna(subset=["auprc_mean", "prevalence_mean", "norm_auprc"]).copy()
-    plot = plot.sort_values("prevalence_mean", ascending=False).reset_index(drop=True)
+    plot = frame.dropna(subset=["auprc", "prevalence", "norm_auprc"]).copy()
+    plot = plot.sort_values("prevalence", ascending=False).reset_index(drop=True)
     plot["prevalence_rank"] = np.arange(1, len(plot) + 1)
     figure = go.Figure(go.Scatter(
-        x=plot["prevalence_rank"], y=plot["auprc_mean"], mode="markers",
+        x=plot["prevalence_rank"], y=plot["auprc"], mode="markers",
         text=plot["gene"],
         marker=dict(
             size=np.clip(7 + 18 * np.maximum(plot["norm_auprc"], 0), 7, 20),
@@ -72,7 +72,7 @@ def _lift_plot(frame: pd.DataFrame) -> go.Figure:
             line=dict(color=theme.INK, width=0.35), opacity=0.86,
         ),
         customdata=np.column_stack([
-            plot["prevalence_mean"], plot["norm_auprc"], plot["n_shap_features"]
+            plot["prevalence"], plot["norm_auprc"], plot["n_shap_features"]
         ]),
         hovertemplate=(
             "<b>%{text}</b><br>Prevalence rank: %{x:.0f}<br>Prevalence: %{customdata[0]:.3f}<br>"
@@ -154,7 +154,7 @@ def render() -> None:
         theme.provenance([("Cohort", cohort), ("Cross-validation", "5-fold"), ("Bundle", meta["sha7"])])
 
     display_columns = [
-        "gene", "auprc_mean", "auprc_std", "prevalence_mean", "norm_auprc", "n_shap_features"
+        "gene", "n_samples", "n_positive", "prevalence", "auprc", "norm_auprc", "roc_auc", "n_shap_features"
     ]
     table = metrics[[column for column in display_columns if column in metrics]].sort_values(
         "norm_auprc", ascending=False

@@ -64,6 +64,7 @@ def render() -> None:
             f'<dt>Variant threshold</dt><dd>Normalized AUPRC &gt; {esc(meta["norm_threshold"])}</dd>'
             f'<dt>Excluded</dt><dd class="mono">{esc(excluded)}</dd>'
             '<dt>Variants</dt><dd>MC3 somatic mutation events</dd>'
-            '<dt>Probabilities</dt><dd>Held-out multitask neural-network predictions</dd>'
+            '<dt>Probabilities</dt><dd>Out-of-fold multitask neural-network predictions (5-fold CV)</dd>'
+            '<dt>SHAP</dt><dd>Tree SHAP on a per-target XGBoost model, top 20 features per target</dd>'
             "</dl>"
         )

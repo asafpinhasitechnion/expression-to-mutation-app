@@ -170,7 +170,7 @@ def shap_cohorts() -> tuple[str, ...]:
 
 @st.cache_data(show_spinner=False)
 def load_kfold(cohort: str) -> pd.DataFrame:
-    """Per-gene CV metrics for a cohort: index=gene, cols incl auprc_mean, prevalence_mean."""
+    """Pooled out-of-fold metrics for a cohort: index=gene, cols incl auprc, prevalence, norm_auprc."""
     relative_path = _shap_cohort_info(cohort).get("metrics_file")
     if not relative_path:
         return pd.DataFrame()
@@ -182,10 +182,7 @@ def load_kfold(cohort: str) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.set_index("gene")
     df.index = df.index.astype(str)
-    if {"auprc_mean", "prevalence_mean"}.issubset(df.columns):
-        prev = df["prevalence_mean"].clip(upper=0.999999)
-        df["norm_auprc"] = (df["auprc_mean"] - prev) / (1.0 - prev)
-    return df
+    return df.rename(columns={"normalized_auprc": "norm_auprc"})
 
 
 @st.cache_data(show_spinner=False)
@@ -245,7 +242,7 @@ def shap_feature_counts(cohort: str) -> pd.Series:
 def gene_metrics(cohort: str) -> pd.DataFrame:
     """Performance table for the model-performance page: genes within a cohort.
 
-    Columns: gene, auprc_mean, prevalence_mean, norm_auprc, n_shap_features.
+    Columns: gene, n_samples, n_positive, prevalence, auprc, norm_auprc, roc_auc, n_shap_features.
     """
     kf = load_kfold(cohort)
     if kf.empty:

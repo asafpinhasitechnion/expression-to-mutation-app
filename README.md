@@ -1,77 +1,52 @@
 # Mutation Viewer
 
-This is the maintained manuscript application. It uses the current mutation-prediction
-bundle under `Results/TCGA_results/Lean_multitask_nn_log` and the same MC3 event-level
-inputs and normalized-AUPRC threshold used by `Figure_Scripts/Figure3.ipynb`.
+Companion app for the Expression-to-Mutation manuscript (Pinhasi & Yizhak). It shows the results of
+the per-cohort TCGA models that predict somatic mutation status from tumor RNA expression.
 
-Parquet and cohort ZIP assets are stored directly in the repository, not in Git LFS.
+Pages:
 
-The application contains four functional pages:
+- **About / Model card:** study scope, definitions, coverage and data provenance.
+- **Model performance:** genes ranked within a cohort by AUPRC, prevalence or normalized AUPRC.
+- **Mutation viewer:** observed MC3 missense and silent variants placed on a transcript, with each
+  tumor's predicted score for the gene.
+- **SHAP explorer:** feature importance per target, and per-sample SHAP beeswarms of its top 20 features.
 
-- About / Model Card: study scope, definitions, coverage, provenance, and interpretation caveats.
-- Model Performance: genes ranked within a selected cohort.
-- Mutation Viewer: observed variants mapped to transcript coordinates with fixed-scale probabilities.
-- SHAP Explorer: target-level feature summaries and per-sample beeswarms for every
-  target produced by the current SHAP workflow.
+## Data
 
-## Build the data bundle
+Everything the app reads is built from the analysis repository,
+[E2M-analyses](https://github.com/asafpinhasitechnion/E2M-analyses), and stored in this repository:
 
-From the `Final_E2M` project root:
+| File | Contents | Source in E2M-analyses |
+|---|---|---|
+| `data/missense_mutations.parquet`, `data/silent_mutations.parquet` | Variants with the predicted score of the tumor for the gene; genes with normalized AUPRC > 0.1, all cohorts except UVM (as Figure 3) | `Runs/TCGA/output/<COHORT>/cv/oof_probabilities.csv`, `Runs/TCGA/data/mutation_events/<COHORT>_mc3.txt.gz` |
+| `shap_bundle/cohorts/<COHORT>_metrics.parquet` | Pooled out-of-fold metrics of the evaluable targets | `Runs/TCGA/output/<COHORT>/cv/metrics.csv` |
+| `shap_bundle/cohorts/<COHORT>_features.parquet` | Mean and mean absolute SHAP of every feature with non-zero SHAP | `Runs/TCGA/output/<COHORT>/shap/<TARGET>/feature_summary.csv` |
+| `shap_bundle/beeswarms/<COHORT>.zip` | One parquet per target: SHAP and expression of its top 20 features in every sample | `Runs/TCGA/output/<COHORT>/shap/<TARGET>/sample_shap_top_features.csv.gz` |
+| `gtf_filtered.parquet` | Transcripts, exons and CDS of the variant genes (GENCODE v23lift37, GRCh37 as MC3) | `gencode.v23lift37.annotation.gtf.gz` |
+| `bundle_manifest.json`, `shap_bundle/index.json` | Analysis commit, row counts, checksums, coverage | |
 
-```powershell
-python Figure_Scripts/mutation_viewer/build_bundle.py --results-dir Results/TCGA_results/Lean_multitask_nn_log
-```
+Scores are from the multitask network, out-of-fold over 5-fold cross-validation. SHAP is computed
+for targets with normalized AUPRC > 0.05, with Tree SHAP on a per-target XGBoost model.
 
-This rebuilds mutation and reference data while preserving the existing indexed SHAP
-bundle. SHAP archives are replaced only when an explicit `--shap-source` is supplied.
+## Rebuild the data
 
-The builder creates:
-
-- `data/silent_mutations.parquet`
-- `data/missense_mutations.parquet`
-- `shap_bundle/cohorts/<COHORT>_metrics.parquet`
-- `shap_bundle/cohorts/<COHORT>_features.parquet`
-- `shap_bundle/beeswarms/<COHORT>.zip`
-- `shap_bundle/index.json`
-- `gtf_filtered.parquet`
-- `sequences_filtered.parquet`
-- `bundle_manifest.json`
-
-By default, mutation-viewer variants match Figure 3 scope: 31 cancer-specific cohorts
-except UVM, with target genes passing normalized AUPRC > 0.1. The `all` model is excluded
-because the transcript analysis uses cancer-specific probabilities.
-
-The target-level summaries come from the canonical lean results. Per-sample Parquet files
-are kept in one uncompressed ZIP per cohort, and the application reads only the selected
-target. This avoids thousands of loose files and does not recompress Parquet data.
-
-## Refresh all per-sample SHAP data
-
-On the cluster, from `Clean_TCGA_E2M_prediction/submit`:
-
-```bash
-./export_all_shap_beeswarms.sh \
-  ../output/multitask_nn \
-  ../output/mutation_viewer_shap_bundle
-```
-
-Copy the resulting directory locally, then rebuild:
+After the TCGA run and SHAP outputs change, from this directory:
 
 ```powershell
-python Figure_Scripts/mutation_viewer/build_shap_bundle.py `
-  --beeswarm-source "<COPIED mutation_viewer_shap_bundle>"
+python -m pip install -r requirements.txt matplotlib seaborn scipy
+python build_bundle.py --analysis-root D:\Asaf\E2M-analyses
 ```
 
-The exporter discovers every `beeswarm_*.parquet`; no cohort/gene list is maintained by
-hand. The pan-cancer `all` archive is not included in the viewer, which presents the 32
-cancer-specific models.
+The builder uses the Figure 3 helpers of E2M-analyses for the variant join, so the variants match
+Figure 3. It checks every variant's score against the current out-of-fold predictions, and writes
+the analysis commit into `bundle_manifest.json`. The GTF defaults to
+`Runs/TCGA/data/annotation/gencode.v23lift37.annotation.gtf.gz` (download from GENCODE release 23,
+GRCh37 mapping); `--gtf` overrides it. Rebuild rather than replacing single files, so the manifest
+stays in step with the data.
 
-## Run the application
+## Run
 
 ```powershell
-python -m pip install -r Figure_Scripts/mutation_viewer/requirements.txt
-streamlit run Figure_Scripts/mutation_viewer/app.py
+python -m pip install -r requirements.txt
+streamlit run app.py
 ```
-
-Do not manually replace individual viewer files. Re-run the builder so the manifest and
-probability validation stay synchronized with the analysis results.

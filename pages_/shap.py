@@ -100,7 +100,7 @@ def _beeswarm_plot(frame: pd.DataFrame, max_features: int) -> tuple[go.Figure, p
             ]),
             hovertemplate=(
                 f"<b>{feature}</b><br>Sample: %{{customdata[0]}}<br>SHAP: %{{x:.4f}}<br>"
-                "Expression count: %{customdata[1]:.3f}<br>"
+                "Expression: %{customdata[1]:.3f}<br>"
                 "Relative expression: %{customdata[2]:.3f}<extra></extra>"
             ),
         ))
@@ -170,8 +170,8 @@ def render() -> None:
     metrics = data.load_kfold(cohort)
     target_metrics = metrics.loc[target] if target in metrics.index else pd.Series(dtype=float)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("AUPRC", f"{target_metrics.get('auprc_mean', np.nan):.3f}")
-    c2.metric("Prevalence", f"{target_metrics.get('prevalence_mean', np.nan):.3f}")
+    c1.metric("AUPRC", f"{target_metrics.get('auprc', np.nan):.3f}")
+    c2.metric("Prevalence", f"{target_metrics.get('prevalence', np.nan):.3f}")
     c3.metric("Normalized AUPRC", f"{target_metrics.get('norm_auprc', np.nan):.3f}")
     c4.metric("SHAP features", f"{len(features):,}")
 
